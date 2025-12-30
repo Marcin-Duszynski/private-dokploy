@@ -3,5 +3,10 @@
     "feature-dev@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true
+  },
+  "env": {
+    "TRACE_TO_LANGSMITH": "true",
+    "CC_LANGSMITH_PROJECT": "private-dokploy",
+    "CC_LANGSMITH_DEBUG": "false"
   }
 }
