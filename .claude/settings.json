@@ -8,5 +8,28 @@
     "TRACE_TO_LANGSMITH": "true",
     "CC_LANGSMITH_PROJECT": "private-dokploy",
     "CC_LANGSMITH_DEBUG": "false"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(oci resource-manager stack list:*)",
+      "Bash(oci resource-manager stack get:*)",
+      "Bash(oci resource-manager job get:*)",
+      "Bash(oci resource-manager job get-job-logs:*)",
+      "Bash(oci resource-manager job list:*)",
+      "Bash(oci compute instance list:*)",
+      "Bash(oci compute instance list-vnics:*)",
+      "Bash(oci network vcn list:*)",
+      "Bash(oci network subnet list:*)"
+    ],
+    "ask": [
+      "Bash(oci resource-manager job create-apply-job:*)",
+      "Bash(oci resource-manager job create-destroy-job:*)",
+      "Bash(oci resource-manager job create-plan-job:*)",
+      "Bash(oci resource-manager stack update:*)"
+    ],
+    "deny": [
+      "Bash(oci iam:*)",
+      "Bash(oci resource-manager stack delete:*)"
+    ]
   }
 }

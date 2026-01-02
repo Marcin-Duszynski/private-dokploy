@@ -85,6 +85,80 @@ Below are the key variables for deployment which are defined in `variables.tf`:
 -   `num_worker_instances`: Number of worker instances to deploy for Dokploy.
 -   `availability_domain_main`: Availability domain for the main instance.
 -   `availability_domain_workers`: Availability domains for worker instances.
--   `instance_shape`: Instance shape (e.g., VM.Standard.E2.1.Micro) used for deployment.
+-   `instance_shape`: Instance shape (e.g., VM.Standard.A1.Flex) used for deployment.
 -   `memory_in_gbs`: Memory size (GB) per instance.
 -   `ocpus`: Number of OCPUs per instance.
+
+## OCI Resource Manager Deployment
+
+This project is deployed via OCI Resource Manager. Use the "Deploy to Oracle Cloud" button above or manage manually:
+
+### Current Deployment (Frankfurt Region)
+
+**Stack:** `dokploy` (Terraform 1.5.x)
+
+| Instance | Public IP | Private IP | Availability Domain |
+|----------|-----------|------------|---------------------|
+| dokploy-main | 141.147.10.90 | 10.0.0.253 | EU-FRANKFURT-1-AD-1 |
+| dokploy-worker-1 | 130.61.113.138 | 10.0.0.107 | EU-FRANKFURT-1-AD-2 |
+| dokploy-worker-2 | 130.61.47.55 | 10.0.0.44 | EU-FRANKFURT-1-AD-2 |
+
+### Deploying Changes via OCI Resource Manager
+
+#### Step 1: Update Stack (if code changed)
+
+```bash
+# Create a zip of the repo
+zip -r dokploy-update.zip . -x "*.git*" -x ".claude/*" -x ".planning/*" -x "doc/*"
+
+# Upload to the stack
+oci resource-manager stack update \
+  --stack-id <stack-ocid> \
+  --config-source dokploy-update.zip
+```
+
+#### Step 2: Plan
+
+```bash
+oci resource-manager job create-plan-job --stack-id <stack-ocid>
+
+# Check plan output
+oci resource-manager job get-job-logs --job-id <job-ocid>
+```
+
+#### Step 3: Apply
+
+```bash
+# Apply using the latest plan
+oci resource-manager job create-apply-job \
+  --stack-id <stack-ocid> \
+  --execution-plan-strategy FROM_LATEST_PLAN_JOB
+
+# Or auto-approve
+oci resource-manager job create-apply-job \
+  --stack-id <stack-ocid> \
+  --execution-plan-strategy AUTO_APPROVED
+```
+
+### OCI CLI Reference
+
+| Terraform | OCI Resource Manager |
+|-----------|---------------------|
+| `terraform plan` | `oci resource-manager job create-plan-job --stack-id <ocid>` |
+| `terraform apply` | `oci resource-manager job create-apply-job --stack-id <ocid>` |
+| `terraform destroy` | `oci resource-manager job create-destroy-job --stack-id <ocid>` |
+
+```bash
+# List stacks
+oci resource-manager stack list --compartment-id <compartment-ocid> --all
+
+# View stack details
+oci resource-manager stack get --stack-id <stack-ocid>
+
+# List job history
+oci resource-manager job list --stack-id <stack-ocid> --all
+```
+
+## Security
+
+For details on security configuration and hardening applied to this deployment, see [Security Changes Report](doc/SECURITY_CHANGES_REPORT.md).
