@@ -166,3 +166,20 @@ For details on security configuration and hardening applied to this deployment, 
 ## Secure Access via OCI Bastion
 
 For secure SSH access without exposing public IPs, or as an additional security layer, see the [OCI Bastion Guide](doc/OCI_BASTION_GUIDE.md).
+
+## Tailscale VPN (Optional)
+
+For secure mesh VPN access to instances, Tailscale can be enabled. This allows:
+
+- SSH access via hostnames (`ssh ubuntu@dokploy-main`)
+- Direct access to Dokploy UI (`http://dokploy-main:3000`)
+- Tailscale SSH (browser-based, no key management)
+
+To enable, set these variables in OCI Resource Manager:
+
+```hcl
+enable_tailscale   = true
+tailscale_auth_key = "tskey-auth-xxxxx..."  # Generate at https://login.tailscale.com/admin/settings/keys
+```
+
+For detailed setup instructions, see the [Tailscale Guide](doc/TAILSCALE_GUIDE.md).

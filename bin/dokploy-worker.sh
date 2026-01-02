@@ -67,3 +67,21 @@ iptables -I INPUT 1 -p udp -s 10.0.0.0/16 --dport 7946 -j ACCEPT
 iptables -I INPUT 1 -p udp -s 10.0.0.0/16 --dport 4789 -j ACCEPT
 
 netfilter-persistent save
+
+# =============================================================================
+# Tailscale VPN (optional)
+# =============================================================================
+%{ if enable_tailscale && tailscale_auth_key != "" ~}
+# Install Tailscale
+curl -fsSL https://tailscale.com/install.sh | sh
+
+# Configure Tailscale with auth key
+# --ssh: Enable Tailscale SSH (access without managing SSH keys)
+# --accept-routes: Accept routes advertised by other nodes
+# --accept-dns: Use Tailscale's MagicDNS
+tailscale up --authkey="${tailscale_auth_key}" --ssh --accept-routes --accept-dns=true --hostname="dokploy-worker-${worker_index}"
+
+# Allow Tailscale through UFW (for direct connections, optional - works via DERP without this)
+ufw allow in on tailscale0 comment 'Tailscale'
+ufw allow 41641/udp comment 'Tailscale direct'
+%{ endif ~}

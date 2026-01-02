@@ -104,6 +104,28 @@ oci bastion session create-managed-ssh \
   --session-ttl 10800
 ```
 
+## Tailscale VPN (Secure Remote Access)
+
+For secure mesh VPN access to instances, see [doc/TAILSCALE_GUIDE.md](doc/TAILSCALE_GUIDE.md).
+
+Quick setup:
+```bash
+# 1. Generate auth key at https://login.tailscale.com/admin/settings/keys (reusable)
+
+# 2. Set variables in OCI Resource Manager stack:
+#    enable_tailscale   = true
+#    tailscale_auth_key = "tskey-auth-xxxxx..."
+
+# 3. Deploy changes (plan + apply)
+
+# 4. Connect via Tailscale
+ssh ubuntu@dokploy-main
+ssh ubuntu@dokploy-worker-1
+
+# Access Dokploy UI directly
+open http://dokploy-main:3000
+```
+
 ## Current OCI Deployment
 
 **Region:** eu-frankfurt-1

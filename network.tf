@@ -184,6 +184,20 @@ resource "oci_core_security_list" "dokploy_security_list" {
     description = "Allow Docker Swarm overlay network on port 4789 (VCN only)"
   }
 
+  # Tailscale direct connections (optional)
+  dynamic "ingress_security_rules" {
+    for_each = var.enable_tailscale ? [1] : []
+    content {
+      protocol = "17" # UDP
+      source   = "0.0.0.0/0"
+      udp_options {
+        min = 41641
+        max = 41641
+      }
+      description = "Allow Tailscale direct connections on port 41641"
+    }
+  }
+
   # Egress Rule (optional, if needed)
   egress_security_rules {
     protocol    = "all"
@@ -343,6 +357,24 @@ resource "oci_core_network_security_group_security_rule" "nsg_swarm_overlay" {
     destination_port_range {
       min = 4789
       max = 4789
+    }
+  }
+}
+
+# NSG Rules - Tailscale (optional)
+resource "oci_core_network_security_group_security_rule" "nsg_tailscale" {
+  count                     = var.enable_tailscale ? 1 : 0
+  network_security_group_id = oci_core_network_security_group.dokploy_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "17" # UDP
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
+  description               = "Tailscale direct connections"
+
+  udp_options {
+    destination_port_range {
+      min = 41641
+      max = 41641
     }
   }
 }

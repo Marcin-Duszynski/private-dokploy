@@ -9,7 +9,10 @@ resource "oci_core_instance" "dokploy_main" {
 
   metadata = {
     ssh_authorized_keys = local.instance_config.ssh_authorized_keys
-    user_data           = base64encode(file("./bin/dokploy-main.sh"))
+    user_data = base64encode(templatefile("./bin/dokploy-main.sh", {
+      enable_tailscale   = var.enable_tailscale
+      tailscale_auth_key = var.tailscale_auth_key
+    }))
   }
 
   create_vnic_details {
@@ -99,7 +102,11 @@ resource "oci_core_instance" "dokploy_worker" {
 
   metadata = {
     ssh_authorized_keys = local.instance_config.ssh_authorized_keys
-    user_data           = base64encode(file("./bin/dokploy-worker.sh"))
+    user_data = base64encode(templatefile("./bin/dokploy-worker.sh", {
+      enable_tailscale   = var.enable_tailscale
+      tailscale_auth_key = var.tailscale_auth_key
+      worker_index       = count.index + 1
+    }))
   }
 
   create_vnic_details {

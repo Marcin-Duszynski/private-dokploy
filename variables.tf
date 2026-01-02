@@ -76,3 +76,20 @@ variable "bastion_session_ttl" {
   type        = number
   default     = 10800
 }
+
+# =============================================================================
+# Tailscale VPN
+# =============================================================================
+
+variable "enable_tailscale" {
+  description = "Enable Tailscale VPN on instances. Requires tailscale_auth_key to be set."
+  type        = bool
+  default     = false
+}
+
+variable "tailscale_auth_key" {
+  description = "Tailscale auth key for automatic device registration. Generate at: https://login.tailscale.com/admin/settings/keys (use reusable key for multiple instances)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
