@@ -1,0 +1,7 @@
+{
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#d61d61",
+    "titleBar.activeForeground": "#ffffff"
+  },
+  "diffEditor.renderSideBySide": false
+}

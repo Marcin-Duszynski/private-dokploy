@@ -162,3 +162,7 @@ oci resource-manager job list --stack-id <stack-ocid> --all
 ## Security
 
 For details on security configuration and hardening applied to this deployment, see [Security Changes Report](doc/SECURITY_CHANGES_REPORT.md).
+
+## Secure Access via OCI Bastion
+
+For secure SSH access without exposing public IPs, or as an additional security layer, see the [OCI Bastion Guide](doc/OCI_BASTION_GUIDE.md).

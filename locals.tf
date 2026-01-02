@@ -9,14 +9,16 @@ locals {
       ocpus         = var.ocpus
     }
     source_details = {
-      source_id   = var.source_image_id
-      source_type = "image"
+      source_id               = var.source_image_id
+      source_type             = "image"
+      boot_volume_size_in_gbs = var.boot_volume_size_in_gbs
     }
     availability_config = {
       recovery_action = "RESTORE_INSTANCE"
     }
     instance_options = {
-      are_legacy_imds_endpoints_disabled = false
+      # IMDSv2 enforced - legacy metadata endpoints disabled to prevent SSRF attacks
+      are_legacy_imds_endpoints_disabled = true
     }
   }
 }

@@ -80,6 +80,30 @@ availability_domain_workers # AD for worker instances
 - PV encryption in transit enabled
 - Dokploy UI (port 3000) accessible only within VCN; use Traefik for public access
 
+## OCI Bastion (Secure SSH Access)
+
+For secure SSH access via OCI Bastion service, see [doc/OCI_BASTION_GUIDE.md](doc/OCI_BASTION_GUIDE.md).
+
+Quick commands:
+```bash
+# Set compartment
+COMPARTMENT_ID="ocid1.tenancy.oc1..aaaaaaaa2cp3q2j6onjrvpkcnulkowvhhdyt4nt2sqitbgvsqgrizq5cst7q"
+
+# Get bastion ID
+BASTION_ID=$(oci bastion bastion list --compartment-id $COMPARTMENT_ID --name dokploy-bastion --query 'data[0].id' --raw-output)
+
+# List active sessions
+oci bastion session list --bastion-id $BASTION_ID --session-lifecycle-state ACTIVE --output table
+
+# Create SSH session to main instance
+oci bastion session create-managed-ssh \
+  --bastion-id $BASTION_ID \
+  --target-resource-id <instance-ocid> \
+  --target-os-username ubuntu \
+  --ssh-public-key-file ~/.ssh/id_rsa.pub \
+  --session-ttl 10800
+```
+
 ## Current OCI Deployment
 
 **Region:** eu-frankfurt-1

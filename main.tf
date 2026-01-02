@@ -15,6 +15,7 @@ resource "oci_core_instance" "dokploy_main" {
   create_vnic_details {
     display_name              = "dokploy-main-${random_string.resource_code.result}"
     subnet_id                 = oci_core_subnet.dokploy_subnet.id
+    nsg_ids                   = [oci_core_network_security_group.dokploy_nsg.id]
     assign_ipv6ip             = false
     assign_private_dns_record = true
     assign_public_ip          = true
@@ -34,19 +35,20 @@ resource "oci_core_instance" "dokploy_main" {
   }
 
   source_details {
-    source_id   = local.instance_config.source_details.source_id
-    source_type = local.instance_config.source_details.source_type
+    source_id               = local.instance_config.source_details.source_id
+    source_type             = local.instance_config.source_details.source_type
+    boot_volume_size_in_gbs = local.instance_config.source_details.boot_volume_size_in_gbs
   }
 
   agent_config {
     is_management_disabled = "false"
     is_monitoring_disabled = "false"
     plugins_config {
-      desired_state = "DISABLED"
+      desired_state = "ENABLED"
       name          = "Vulnerability Scanning"
     }
     plugins_config {
-      desired_state = "DISABLED"
+      desired_state = "ENABLED"
       name          = "Management Agent"
     }
     plugins_config {
@@ -78,7 +80,7 @@ resource "oci_core_instance" "dokploy_main" {
       name          = "Block Volume Management"
     }
     plugins_config {
-      desired_state = "DISABLED"
+      desired_state = "ENABLED"
       name          = "Bastion"
     }
   }
@@ -103,6 +105,7 @@ resource "oci_core_instance" "dokploy_worker" {
   create_vnic_details {
     display_name              = "dokploy-worker-${count.index + 1}-${random_string.resource_code.result}"
     subnet_id                 = oci_core_subnet.dokploy_subnet.id
+    nsg_ids                   = [oci_core_network_security_group.dokploy_nsg.id]
     assign_ipv6ip             = false
     assign_private_dns_record = true
     assign_public_ip          = true
@@ -122,19 +125,20 @@ resource "oci_core_instance" "dokploy_worker" {
   }
 
   source_details {
-    source_id   = local.instance_config.source_details.source_id
-    source_type = local.instance_config.source_details.source_type
+    source_id               = local.instance_config.source_details.source_id
+    source_type             = local.instance_config.source_details.source_type
+    boot_volume_size_in_gbs = local.instance_config.source_details.boot_volume_size_in_gbs
   }
 
   agent_config {
     is_management_disabled = "false"
     is_monitoring_disabled = "false"
     plugins_config {
-      desired_state = "DISABLED"
+      desired_state = "ENABLED"
       name          = "Vulnerability Scanning"
     }
     plugins_config {
-      desired_state = "DISABLED"
+      desired_state = "ENABLED"
       name          = "Management Agent"
     }
     plugins_config {
@@ -166,7 +170,7 @@ resource "oci_core_instance" "dokploy_worker" {
       name          = "Block Volume Management"
     }
     plugins_config {
-      desired_state = "DISABLED"
+      desired_state = "ENABLED"
       name          = "Bastion"
     }
   }

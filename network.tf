@@ -55,15 +55,15 @@ resource "oci_core_security_list" "dokploy_security_list" {
     description = "Allow Dokploy traffic on port 3000 (VCN only)"
   }
 
-  # SSH
+  # SSH - restricted to configured CIDR (VCN-only by default)
   ingress_security_rules {
     protocol = "6" # TCP
-    source   = "0.0.0.0/0"
+    source   = var.ssh_allowed_cidr
     tcp_options {
       min = 22
       max = 22
     }
-    description = "Allow SSH traffic on port 22"
+    description = "Allow SSH traffic on port 22 (${var.ssh_allowed_cidr})"
   }
 
   # HTTP & HTTPS traffic
@@ -190,4 +190,188 @@ resource "oci_core_security_list" "dokploy_security_list" {
     destination = "0.0.0.0/0"
     description = "Allow all egress traffic"
   }
+}
+
+# Network Security Group for finer-grained instance-level control
+resource "oci_core_network_security_group" "dokploy_nsg" {
+  compartment_id = var.compartment_id
+  vcn_id         = oci_core_vcn.dokploy_vcn.id
+  display_name   = "dokploy-nsg-${random_string.resource_code.result}"
+}
+
+# NSG Rules - SSH (restricted)
+resource "oci_core_network_security_group_security_rule" "nsg_ssh" {
+  network_security_group_id = oci_core_network_security_group.dokploy_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6" # TCP
+  source                    = var.ssh_allowed_cidr
+  source_type               = "CIDR_BLOCK"
+  description               = "SSH access (${var.ssh_allowed_cidr})"
+
+  tcp_options {
+    destination_port_range {
+      min = 22
+      max = 22
+    }
+  }
+}
+
+# NSG Rules - HTTP/HTTPS (public)
+resource "oci_core_network_security_group_security_rule" "nsg_http" {
+  network_security_group_id = oci_core_network_security_group.dokploy_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6" # TCP
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
+  description               = "HTTP access"
+
+  tcp_options {
+    destination_port_range {
+      min = 80
+      max = 80
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "nsg_https" {
+  network_security_group_id = oci_core_network_security_group.dokploy_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6" # TCP
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
+  description               = "HTTPS access"
+
+  tcp_options {
+    destination_port_range {
+      min = 443
+      max = 443
+    }
+  }
+}
+
+# NSG Rules - Traefik (public)
+resource "oci_core_network_security_group_security_rule" "nsg_traefik_http" {
+  network_security_group_id = oci_core_network_security_group.dokploy_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6" # TCP
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
+  description               = "Traefik HTTP"
+
+  tcp_options {
+    destination_port_range {
+      min = 81
+      max = 81
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "nsg_traefik_https" {
+  network_security_group_id = oci_core_network_security_group.dokploy_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6" # TCP
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
+  description               = "Traefik HTTPS"
+
+  tcp_options {
+    destination_port_range {
+      min = 444
+      max = 444
+    }
+  }
+}
+
+# NSG Rules - Docker Swarm (VCN only)
+resource "oci_core_network_security_group_security_rule" "nsg_swarm_mgmt" {
+  network_security_group_id = oci_core_network_security_group.dokploy_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6" # TCP
+  source                    = "10.0.0.0/16"
+  source_type               = "CIDR_BLOCK"
+  description               = "Docker Swarm management (VCN only)"
+
+  tcp_options {
+    destination_port_range {
+      min = 2377
+      max = 2377
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "nsg_swarm_node_tcp" {
+  network_security_group_id = oci_core_network_security_group.dokploy_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6" # TCP
+  source                    = "10.0.0.0/16"
+  source_type               = "CIDR_BLOCK"
+  description               = "Docker Swarm node communication TCP (VCN only)"
+
+  tcp_options {
+    destination_port_range {
+      min = 7946
+      max = 7946
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "nsg_swarm_node_udp" {
+  network_security_group_id = oci_core_network_security_group.dokploy_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "17" # UDP
+  source                    = "10.0.0.0/16"
+  source_type               = "CIDR_BLOCK"
+  description               = "Docker Swarm node communication UDP (VCN only)"
+
+  udp_options {
+    destination_port_range {
+      min = 7946
+      max = 7946
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "nsg_swarm_overlay" {
+  network_security_group_id = oci_core_network_security_group.dokploy_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "17" # UDP
+  source                    = "10.0.0.0/16"
+  source_type               = "CIDR_BLOCK"
+  description               = "Docker Swarm overlay network (VCN only)"
+
+  udp_options {
+    destination_port_range {
+      min = 4789
+      max = 4789
+    }
+  }
+}
+
+# NSG Rules - Egress (allow all)
+resource "oci_core_network_security_group_security_rule" "nsg_egress" {
+  network_security_group_id = oci_core_network_security_group.dokploy_nsg.id
+  direction                 = "EGRESS"
+  protocol                  = "all"
+  destination               = "0.0.0.0/0"
+  destination_type          = "CIDR_BLOCK"
+  description               = "Allow all egress"
+}
+
+# =============================================================================
+# OCI Bastion Service
+# =============================================================================
+# Provides secure SSH access to instances without exposing SSH to the internet.
+# Sessions are time-limited and require OCI authentication.
+
+resource "oci_bastion_bastion" "dokploy_bastion" {
+  count = var.enable_bastion ? 1 : 0
+
+  compartment_id               = var.compartment_id
+  bastion_type                 = "STANDARD"
+  target_subnet_id             = oci_core_subnet.dokploy_subnet.id
+  name                         = "dokploy-bastion-${random_string.resource_code.result}"
+  client_cidr_block_allow_list = var.bastion_allowed_cidrs
+  max_session_ttl_in_seconds   = var.bastion_session_ttl
+
+  # Bastion does not require public IP - it's a managed service
 }

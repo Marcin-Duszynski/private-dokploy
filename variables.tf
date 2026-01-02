@@ -46,3 +46,33 @@ variable "ocpus" {
   type        = string
   default     = "1" # OCI Free
 }
+
+variable "boot_volume_size_in_gbs" {
+  description = "Boot volume size in GB. Minimum 50 GB for Ubuntu. Free tier allows 200 GB total across all instances (e.g., 4 instances × 50 GB = 200 GB)."
+  type        = number
+  default     = 50 # OCI Free - minimum for Ubuntu, maximises available storage
+}
+
+variable "ssh_allowed_cidr" {
+  description = "CIDR block allowed to access SSH. Default is VCN-only (10.0.0.0/16) for security. Set to specific IP (e.g., 'x.x.x.x/32') or '0.0.0.0/0' for public access."
+  type        = string
+  default     = "10.0.0.0/16" # VCN-only by default - requires bastion or VPN for SSH access
+}
+
+variable "enable_bastion" {
+  description = "Enable OCI Bastion service for secure SSH access to instances. Required when SSH is restricted to VCN-only."
+  type        = bool
+  default     = true
+}
+
+variable "bastion_allowed_cidrs" {
+  description = "List of CIDR blocks allowed to connect to the Bastion service. Default allows all IPs (authentication still required)."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "bastion_session_ttl" {
+  description = "Maximum session time-to-live in seconds (default: 3 hours, max: 3 hours)."
+  type        = number
+  default     = 10800
+}
