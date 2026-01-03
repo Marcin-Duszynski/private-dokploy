@@ -78,8 +78,8 @@ curl -fsSL https://tailscale.com/install.sh | sh
 # Configure Tailscale with auth key
 # --ssh: Enable Tailscale SSH (access without managing SSH keys)
 # --accept-routes: Accept routes advertised by other nodes
-# --accept-dns: Use Tailscale's MagicDNS
-tailscale up --authkey="${tailscale_auth_key}" --ssh --accept-routes --accept-dns=true --hostname="dokploy-worker-${worker_index}"
+# --accept-dns=false: Preserve Oracle's internal DNS (recommended by Tailscale)
+tailscale up --authkey="${tailscale_auth_key}" --ssh --accept-routes --accept-dns=false --hostname="dokploy-worker-${worker_index}"
 
 # Allow Tailscale through UFW (for direct connections, optional - works via DERP without this)
 ufw allow in on tailscale0 comment 'Tailscale'

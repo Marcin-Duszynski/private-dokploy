@@ -2,6 +2,8 @@
 
 This guide explains how to configure Tailscale VPN for secure access to your Dokploy infrastructure on OCI.
 
+Based on official Tailscale documentation: https://tailscale.com/kb/1149/cloud-oracle
+
 ## Overview
 
 Tailscale creates a secure mesh VPN network between your devices. Once configured, you can access your OCI instances using:
@@ -26,6 +28,56 @@ Tailscale creates a secure mesh VPN network between your devices. Once configure
 2. Tailscale installed on your local machine
 3. A Tailscale auth key
 
+## OCI-Specific Requirements
+
+### UDP Port 41641 (Required for Direct Connections)
+
+For optimal performance with direct peer-to-peer connections (instead of relayed via DERP), you must add a **stateless** UDP ingress rule to the OCI Security List.
+
+**Via OCI Console:**
+
+1. Go to **Networking > Virtual Cloud Networks > [Your VCN] > Security Lists**
+2. Click on the security list (e.g., `Dokploy Security List`)
+3. Click **Add Ingress Rules**
+4. Configure:
+   - **Stateless**: Yes (IMPORTANT - must be stateless)
+   - **Source CIDR**: `0.0.0.0/0`
+   - **IP Protocol**: UDP
+   - **Destination Port Range**: `41641`
+   - **Description**: `Tailscale direct connections (stateless)`
+
+**Why stateless?** Tailscale uses this port to detect NAT port mappings. Stateless rules allow the bidirectional UDP traffic needed for direct connections.
+
+**Without this rule:** Tailscale will still work but will relay traffic through DERP servers, resulting in higher latency.
+
+### DNS Considerations
+
+The current Terraform scripts use `--accept-dns=true` which enables Tailscale's MagicDNS (allowing `ssh ubuntu@dokploy-main` to work).
+
+**Trade-off:**
+
+| Setting | MagicDNS | Oracle VCN DNS | Recommendation |
+|---------|----------|----------------|----------------|
+| `--accept-dns=true` | Works | May break | Good for simple setups |
+| `--accept-dns=false` | Needs config | Works | Better for VCN-heavy use |
+
+**Official Tailscale recommendation:** Use `--accept-dns=false` and configure split DNS in the Tailscale admin console. This preserves:
+
+- VCN hostnames (`.oraclevcn.com`) resolution
+- Oracle metadata service (169.254.169.254) access
+- Internal VCN communication
+
+To change this, modify the scripts in `bin/dokploy-main.sh` and `bin/dokploy-worker.sh`:
+```bash
+# Change from:
+tailscale up ... --accept-dns=true ...
+
+# To:
+tailscale up ... --accept-dns=false ...
+```
+
+Then configure split DNS (see [DNS Configuration](#dns-configuration-optional) below).
+
 ## Step 1: Generate Auth Key
 
 1. Go to https://login.tailscale.com/admin/settings/keys
@@ -38,6 +90,17 @@ Tailscale creates a secure mesh VPN network between your devices. Once configure
 4. Copy the generated key (starts with `tskey-auth-`)
 
 ## Step 2: Configure Terraform Variables
+
+### Tailscale API Key (Local Environment)
+
+The `TAILSCALE_API_KEY` environment variable is configured in `~/.zshrc` for local Tailscale CLI operations and API access.
+
+```bash
+# Verify it's set
+echo $TAILSCALE_API_KEY
+```
+
+Generate API keys at: https://login.tailscale.com/admin/settings/keys (select "API access token")
 
 ### Option A: OCI Resource Manager (Recommended)
 
@@ -145,15 +208,21 @@ http://100.x.x.x:3000
 
 ## Security Recommendations
 
-### Disable Public SSH (Optional)
+### Remove Public SSH Access (Recommended)
 
-If using Tailscale exclusively, you can disable public SSH by setting:
+Once Tailscale is confirmed working, the official Tailscale guide recommends removing the SSH ingress rule from the OCI Security List entirely. SSH access will then only be possible via Tailscale.
 
-```hcl
-ssh_allowed_cidr = "100.64.0.0/10"  # Tailscale CGNAT range only
-```
+**Steps:**
 
-This restricts SSH to Tailscale network only.
+1. Verify Tailscale SSH works: `tailscale ssh ubuntu@dokploy-main`
+2. Go to **Networking > Virtual Cloud Networks > Security Lists**
+3. Remove or restrict the SSH (port 22) ingress rule
+4. Optionally, update Terraform:
+   ```hcl
+   ssh_allowed_cidr = "100.64.0.0/10"  # Tailscale CGNAT range only
+   ```
+
+This ensures instances are only accessible via the encrypted Tailscale network.
 
 ### Enable ACLs
 
@@ -180,6 +249,56 @@ Then generate auth keys with `--tags=tag:dokploy`.
 
 For better security, use auth keys with expiration and enable key expiry for machines in Tailscale admin.
 
+## Route Advertisement (Optional)
+
+To access other VCN resources through your Tailscale network, you can configure one instance as a subnet router.
+
+### Enable Subnet Router on Main Instance
+
+SSH into the main instance and run:
+
+```bash
+# Advertise VCN subnet and Oracle metadata service
+sudo tailscale set --advertise-routes=10.0.0.0/24,169.254.169.254/32
+```
+
+### Approve Routes in Admin Console
+
+1. Go to https://login.tailscale.com/admin/machines
+2. Click on `dokploy-main`
+3. Under **Subnets**, approve the advertised routes
+
+### Enable IP Forwarding (if not already enabled)
+
+```bash
+echo 'net.ipv4.ip_forward = 1' | sudo tee -a /etc/sysctl.conf
+echo 'net.ipv6.conf.all.forwarding = 1' | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+Now devices on your Tailscale network can access VCN resources directly.
+
+## DNS Configuration (Optional)
+
+To resolve Oracle VCN hostnames (`.oraclevcn.com`) from any device on your Tailscale network:
+
+### Configure Split DNS in Tailscale Admin
+
+1. Go to https://login.tailscale.com/admin/dns
+2. Under **Nameservers**, click **Add nameserver**
+3. Configure:
+   - **Nameserver**: The Tailscale IP of your dokploy-main instance (e.g., `100.x.x.x`)
+   - **Restrict to domain**: `oraclevcn.com`
+
+This routes DNS queries for `.oraclevcn.com` to your OCI instance, which can resolve internal VCN hostnames.
+
+### Alternative: Use Oracle DNS Directly
+
+If you've set up route advertisement (above), you can point to Oracle's metadata DNS:
+
+1. **Nameserver**: `169.254.169.254`
+2. **Restrict to domain**: `oraclevcn.com`
+
 ## Troubleshooting
 
 ### Check Tailscale Status on Instance
@@ -197,6 +316,27 @@ sudo systemctl status tailscaled
 # View Tailscale logs
 sudo journalctl -u tailscaled -f
 ```
+
+### Verify Direct Connections (Not Relayed)
+
+Check if traffic is going direct or via DERP relay:
+
+```bash
+# From your local machine
+tailscale ping dokploy-main
+```
+
+**Good output (direct):**
+```
+pong from dokploy-main (100.x.x.x) via 141.147.10.90:41641 in 15ms
+```
+
+**Relayed output (needs UDP 41641 rule):**
+```
+pong from dokploy-main (100.x.x.x) via DERP(fra) in 45ms
+```
+
+If you see `via DERP`, add the stateless UDP 41641 ingress rule to your OCI Security List (see [OCI-Specific Requirements](#oci-specific-requirements)).
 
 ### Re-authenticate Device
 
@@ -250,6 +390,7 @@ sudo iptables -L -n | grep 41641
 │         │                   │                   │               │
 └─────────┼───────────────────┼───────────────────┼───────────────┘
           │                   │                   │
+          │           UDP 41641 (direct)          │
           │            ┌──────┴──────┐            │
           │            │  OCI VCN    │            │
           │            │ 10.0.0.0/16 │            │
@@ -257,19 +398,27 @@ sudo iptables -L -n | grep 41641
           │                                       │
           └───────────────────────────────────────┘
                     Encrypted WireGuard tunnel
+
+Required OCI Security List Rules:
+┌────────────┬──────────┬─────────────┬───────────┐
+│ Protocol   │ Port     │ Source      │ Stateless │
+├────────────┼──────────┼─────────────┼───────────┤
+│ UDP        │ 41641    │ 0.0.0.0/0   │ Yes       │
+└────────────┴──────────┴─────────────┴───────────┘
 ```
 
 ## Tailscale vs OCI Bastion
 
 | Feature | Tailscale | OCI Bastion |
 |---------|-----------|-------------|
-| **Setup** | Auth key only | Session creation per connection |
+| **Setup** | Auth key + UDP 41641 rule | Session creation per connection |
 | **Session duration** | Unlimited | Max 3 hours |
 | **Cost** | Free (up to 100 devices) | Free |
 | **SSH keys** | Optional (Tailscale SSH) | Required |
-| **Direct access** | Yes | Proxy only |
+| **Direct access** | Yes (with UDP 41641) | Proxy only |
 | **MagicDNS** | Yes | No |
 | **Works offline** | Cached connections | Requires OCI API |
+| **OCI config needed** | Stateless UDP 41641 ingress | None (managed service) |
 
 Both can be used together - Tailscale for daily access, Bastion as backup.
 

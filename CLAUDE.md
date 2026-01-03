@@ -108,6 +108,8 @@ oci bastion session create-managed-ssh \
 
 For secure mesh VPN access to instances, see [doc/TAILSCALE_GUIDE.md](doc/TAILSCALE_GUIDE.md).
 
+**Environment:** `TAILSCALE_API_KEY` is configured in `~/.zshrc` for local CLI/API access.
+
 Quick setup:
 ```bash
 # 1. Generate auth key at https://login.tailscale.com/admin/settings/keys (reusable)

@@ -93,3 +93,9 @@ variable "tailscale_auth_key" {
   default     = ""
   sensitive   = true
 }
+
+variable "tailscale_advertise_routes" {
+  description = "Enable Tailscale subnet router on main instance to advertise VCN routes (10.0.0.0/24) and Oracle metadata (169.254.169.254). Allows accessing VCN resources from any Tailscale device. Requires approval in Tailscale admin console."
+  type        = bool
+  default     = false
+}

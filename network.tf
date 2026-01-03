@@ -184,17 +184,18 @@ resource "oci_core_security_list" "dokploy_security_list" {
     description = "Allow Docker Swarm overlay network on port 4789 (VCN only)"
   }
 
-  # Tailscale direct connections (optional)
+  # Tailscale direct connections (optional, stateless per Tailscale docs)
   dynamic "ingress_security_rules" {
     for_each = var.enable_tailscale ? [1] : []
     content {
-      protocol = "17" # UDP
-      source   = "0.0.0.0/0"
+      protocol  = "17" # UDP
+      source    = "0.0.0.0/0"
+      stateless = true # Required for Tailscale NAT detection
       udp_options {
         min = 41641
         max = 41641
       }
-      description = "Allow Tailscale direct connections on port 41641"
+      description = "Tailscale direct connections (stateless)"
     }
   }
 

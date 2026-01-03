@@ -9,3 +9,6 @@
 .ssh
 **/node_modules/
 .terraform.lock.hcl
+
+# Auto Claude data directory
+.auto-claude/

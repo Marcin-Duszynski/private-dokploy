@@ -10,8 +10,9 @@ resource "oci_core_instance" "dokploy_main" {
   metadata = {
     ssh_authorized_keys = local.instance_config.ssh_authorized_keys
     user_data = base64encode(templatefile("./bin/dokploy-main.sh", {
-      enable_tailscale   = var.enable_tailscale
-      tailscale_auth_key = var.tailscale_auth_key
+      enable_tailscale           = var.enable_tailscale
+      tailscale_auth_key         = var.tailscale_auth_key
+      tailscale_advertise_routes = var.tailscale_advertise_routes
     }))
   }
 
@@ -86,6 +87,10 @@ resource "oci_core_instance" "dokploy_main" {
       desired_state = "ENABLED"
       name          = "Bastion"
     }
+  }
+
+  lifecycle {
+    ignore_changes = [metadata]
   }
 }
 
@@ -180,5 +185,9 @@ resource "oci_core_instance" "dokploy_worker" {
       desired_state = "ENABLED"
       name          = "Bastion"
     }
+  }
+
+  lifecycle {
+    ignore_changes = [metadata]
   }
 }
